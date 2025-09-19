@@ -1,6 +1,7 @@
 # Morality Simulator
 
-**🚀 [Try the Live Demo](https://psysecgroup.github.io/morality_simulator.html)**
+**🚀 [Try the Live Demo]([https://psysecgroup.github.io/morality_simulator.html](https://PsySecGroup.github.io/morality-simulator/morality_simulator.html
+))**
 
 A dynamic simulation that demonstrates the complex, unintended consequences of moral rules and behavioral dictates in interconnected systems. While disguised as a "temperature" system, this simulator reveals how simple moral imperatives can create chaotic, emergent behaviors that often contradict their intended purpose.
 
