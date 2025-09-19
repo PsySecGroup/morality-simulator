@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaos Control Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 320px;
+            height: 100vh;
+            gap: 1px;
+            background: #16213e;
+        }
+        
+        .control-panel {
+            background: rgba(26, 26, 46, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 2px solid #0f3460;
+        }
+        
+        .simulation-area {
+            background: radial-gradient(circle at center, #0a1428 0%, #051219 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .rules-panel {
+            background: rgba(26, 26, 46, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 2px solid #0f3460;
+        }
+        
+        h2 {
+            color: #64ffda;
+            margin-bottom: 16px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        h3 {
+            color: #bb86fc;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #1976d2, #42a5f5);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            margin: 4px 2px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
+        }
+        
+        button.danger {
+            background: linear-gradient(45deg, #d32f2f, #f44336);
+        }
+        
+        button.success {
+            background: linear-gradient(45deg, #388e3c, #4caf50);
+        }
+        
+        input, select, textarea {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #64ffda;
+            color: #e0e0e0;
+            padding: 6px 10px;
+            margin: 4px 0;
+            border-radius: 4px;
+            font-size: 12px;
+            width: 100%;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #bb86fc;
+            box-shadow: 0 0 8px rgba(187, 134, 252, 0.3);
+        }
+        
+        .node {
+            position: absolute;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid rgba(100, 255, 218, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            text-shadow: 0 0 4px rgba(0,0,0,0.8);
+            user-select: none;
+        }
+        
+        .node:hover {
+            transform: scale(1.2);
+            border-color: #bb86fc;
+            box-shadow: 0 0 20px rgba(187, 134, 252, 0.6);
+        }
+        
+        .node.selected {
+            transform: scale(1.3);
+            border-color: #ff6b6b;
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.8);
+        }
+        
+        .connection {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .connection-line {
+            stroke: rgba(100, 255, 218, 0.3);
+            stroke-width: 1;
+            transition: all 0.3s ease;
+        }
+        
+        .connection-line.active {
+            stroke: rgba(187, 134, 252, 0.8);
+            stroke-width: 2;
+            filter: drop-shadow(0 0 4px rgba(187, 134, 252, 0.4));
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 16px 0;
+        }
+        
+        .stat-box {
+            background: rgba(100, 255, 218, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(100, 255, 218, 0.3);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #64ffda;
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            color: #b0b0b0;
+            text-transform: uppercase;
+        }
+        
+        .rule-card {
+            background: rgba(187, 134, 252, 0.1);
+            border: 1px solid rgba(187, 134, 252, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .rule-card:hover {
+            border-color: rgba(187, 134, 252, 0.6);
+            box-shadow: 0 4px 12px rgba(187, 134, 252, 0.2);
+        }
+        
+        .rule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .rule-name {
+            font-weight: bold;
+            color: #bb86fc;
+        }
+        
+        .category-badge {
+            display: inline-block;
+            background: rgba(100, 255, 218, 0.2);
+            color: #64ffda;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            margin: 2px;
+        }
+        
+        .control-section {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(100, 255, 218, 0.2);
+        }
+        
+        .slider-container {
+            margin: 8px 0;
+        }
+        
+        .slider {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #64ffda;
+            cursor: pointer;
+            border: 2px solid #0c0c0c;
+        }
+        
+        .performance-monitor {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            color: #64ffda;
+            z-index: 1000;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            color: #e0e0e0;
+            z-index: 1000;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        .pulsing {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="control-section">
+                <h2>🎛️ Simulation Control</h2>
+                <button id="toggleBtn" class="success">▶️ Start</button>
+                <button id="resetBtn" class="danger">🔄 Reset</button>
+                <button id="randomizeBtn">🎲 Randomize</button>
+            </div>
+
+            <div class="control-section">
+                <h3>Global Settings</h3>
+                <div class="slider-container">
+                    <label id="chaosLabel">Chaos Level: 0.50</label>
+                    <input type="range" id="chaosSlider" min="0" max="1" step="0.01" value="0.5" class="slider" />
+                </div>
+                <div class="slider-container">
+                    <label id="convergenceLabel">Convergence: 0.30</label>
+                    <input type="range" id="convergenceSlider" min="0" max="1" step="0.01" value="0.3" class="slider" />
+                </div>
+                <div class="slider-container">
+                    <label id="densityLabel">Connection Density: 0.30</label>
+                    <input type="range" id="densitySlider" min="0" max="1" step="0.01" value="0.3" class="slider" />
+                </div>
+                <div class="slider-container">
+                    <label id="nodeCountLabel">Node Count: 25</label>
+                    <input type="range" id="nodeCountSlider" min="10" max="100" step="1" value="25" class="slider" />
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-value" id="nodeCountStat">25</div>
+                        <div class="stat-label">Nodes</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="connectionsStat">0</div>
+                        <div class="stat-label">Connections</div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="avgValueStat">0.500</div>
+                    <div class="stat-label">Average Value</div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Categories</h3>
+                <div id="categoriesList"></div>
+                <div style="margin-top: 12px;">
+                    <input type="text" id="newCategoryInput" placeholder="New category name" />
+                    <button id="addCategoryBtn" class="success" style="width: 100%; margin-top: 4px;">Add Category</button>
+                </div>
+            </div>
+
+            <div id="selectedNodeInfo" class="control-section hidden">
+                <h3>Selected Node</h3>
+                <p id="selectedNodeDetails"></p>
+                <select id="nodeCategorySelect" disabled></select>
+                <small style="color: #999; font-style: italic;">Categories are auto-assigned based on node values</small>
+            </div>
+
+            <div style="margin-top: 8px;">
+                <label>
+                    <input type="checkbox" id="showConnectionsCheck" checked />
+                    Show Connections
+                </label>
+            </div>
+        </div>
+
+        <!-- Simulation Area -->
+        <div class="simulation-area" id="simulationArea">
+            <!-- Performance Monitor -->
+            <div class="performance-monitor">
+                FPS: <span id="fpsCounter">0</span>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend">
+                <h4 style="margin-bottom: 8px;">Categories</h4>
+                <div id="legendItems"></div>
+            </div>
+
+            <!-- SVG for connections -->
+            <svg id="connectionsSvg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></svg>
+
+            <!-- Nodes container -->
+            <div id="nodesContainer"></div>
+        </div>
+
+        <!-- Rules Panel -->
+        <div class="rules-panel">
+            <div class="control-section">
+                <h2>⚙️ Behavioral Rules</h2>
+                
+                <h3>Create New Rule</h3>
+                <input type="text" id="ruleNameInput" placeholder="Rule name" />
+                
+                <select id="sourceCategory">
+                    <option value="">Select source category</option>
+                </select>
+                
+                <select id="targetCategory">
+                    <option value="">Any target (optional)</option>
+                </select>
+                
+                <select id="ruleType">
+                    <option value="attract">Attract - Pull values together</option>
+                    <option value="repel">Repel - Push values apart</option>
+                    <option value="amplify">Amplify - Increase target values</option>
+                    <option value="dampen">Dampen - Decrease target values</option>
+                    <option value="synchronize">Synchronize - Average values</option>
+                </select>
+                
+                <div class="slider-container">
+                    <label id="strengthLabel">Strength: 0.20</label>
+                    <input type="range" id="strengthSlider" min="0" max="1" step="0.01" value="0.2" class="slider" />
+                </div>
+                
+                <button id="addRuleBtn" class="success" style="width: 100%;">Add Rule</button>
+            </div>
+
+            <div class="control-section">
+                <h3>Active Rules</h3>
+                <div id="rulesList"></div>
+                <div id="noRulesMessage" style="text-align: center; color: #666; padding: 20px; font-style: italic;">
+                    No rules defined yet. Create some rules to see the chaos in action!
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Rule Templates</h3>
+                <button id="temperatureTemplate">🌡️ Temperature System</button>
+                <button id="stabilityTemplate">⚖️ Stability System</button>
+                <button id="waveTemplate">🌊 Wave System</button>
+            </div>
+
+            <div style="margin-top: 20px; padding: 12px; background: rgba(100, 255, 218, 0.1); border-radius: 6px; font-size: 11px;">
+                <h4 style="color: #64ffda; margin-bottom: 8px;">💡 Tips:</h4>
+                <ul style="margin-left: 16px; line-height: 1.4;">
+                    <li>Click nodes to inspect their current values and categories</li>
+                    <li>Node categories change automatically based on their values:</li>
+                    <li style="margin-left: 20px;">0.00-0.25 = Cold (Blue), 0.25-0.50 = Stable (Gray)</li>
+                    <li style="margin-left: 20px;">0.50-0.75 = Default (Purple), 0.75-1.00 = Hot (Red)</li>
+                    <li>Rules affect connected nodes based on their current categories</li>
+                    <li>Watch nodes transition between categories as values change!</li>
+                    <li>Higher chaos adds more randomness to the system</li>
+                    <li>Convergence controls how fast nodes reach target values</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Utility functions
+        const random = (min, max) => Math.random() * (max - min) + min;
+        const randomInt = (min, max) => Math.floor(random(min, max + 1));
+        const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+        const lerp = (a, b, t) => a + (b - a) * t;
+
+        // Color utilities
+        const hslToRgb = (h, s, l) => {
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+            const m = l - c / 2;
+            let r, g, b;
+            if (h < 60) [r, g, b] = [c, x, 0];
+            else if (h < 120) [r, g, b] = [x, c, 0];
+            else if (h < 180) [r, g, b] = [0, c, x];
+            else if (h < 240) [r, g, b] = [0, x, c];
+            else if (h < 300) [r, g, b] = [x, 0, c];
+            else [r, g, b] = [c, 0, x];
+            return `rgb(${Math.round((r + m) * 255)}, ${Math.round((g + m) * 255)}, ${Math.round((b + m) * 255)})`;
+        };
+
+        const valueToColor = (value, category) => {
+            // Fixed colors for default categories
+            const fixedColors = {
+                'Default': { h: 270, s: 0.7, l: 0.3 + (value * 0.4) }, // Purple
+                'Hot': { h: 0, s: 0.8, l: 0.3 + (value * 0.4) },      // Red
+                'Cold': { h: 240, s: 0.7, l: 0.3 + (value * 0.4) },   // Blue
+                'Stable': { h: 0, s: 0, l: 0.2 + (value * 0.3) }      // Black/Gray
+            };
+
+            if (fixedColors[category.name]) {
+                const color = fixedColors[category.name];
+                return hslToRgb(color.h, color.s, color.l);
+            }
+
+            // For custom categories, use the original random color system
+            const hue = (category.colorSeed * 137.5) % 360;
+            const saturation = 0.7;
+            const lightness = 0.3 + (value * 0.4);
+            return hslToRgb(hue, saturation, lightness);
+        };
+
+        // Node class
+        class Node {
+            constructor(id, x, y) {
+                this.id = id;
+                this.x = x;
+                this.y = y;
+                this.value = random(0.2, 0.8);
+                this.targetValue = this.value;
+                this.connections = new Set();
+                this.localPressure = random(-0.1, 0.1);
+                this.category = null;
+                this.size = random(12, 24);
+                this.lastUpdate = Date.now();
+                this.element = null;
+            }
+
+            addConnection(nodeId) {
+                this.connections.add(nodeId);
+            }
+
+            removeConnection(nodeId) {
+                this.connections.delete(nodeId);
+            }
+
+            update(nodes, rules, globalSettings) {
+                const now = Date.now();
+                const deltaTime = (now - this.lastUpdate) / 1000;
+                this.lastUpdate = now;
+
+                // Apply local pressure with some randomness
+                const randomFactor = (Math.random() - 0.5) * globalSettings.chaos * 0.1;
+                this.targetValue += (this.localPressure + randomFactor) * deltaTime;
+
+                // Update category based on current value
+                this.category = getCategoryFromValue(this.value);
+
+                // Apply rules
+                if (this.category) {
+                    const applicableRules = rules.filter(rule => 
+                        rule.enabled && rule.sourceCategory === this.category.name
+                    );
+
+                    for (const rule of applicableRules) {
+                        this.applyRule(rule, nodes, deltaTime);
+                    }
+                }
+
+                // Smooth interpolation towards target value
+                const convergenceSpeed = globalSettings.convergence * 2;
+                this.value = lerp(this.value, this.targetValue, convergenceSpeed * deltaTime);
+                this.value = clamp(this.value, 0, 1);
+                this.targetValue = clamp(this.targetValue, 0, 1);
+
+                // Update category again after value change
+                this.category = getCategoryFromValue(this.value);
+
+                // Update local pressure randomly
+                this.localPressure += (Math.random() - 0.5) * 0.01;
+                this.localPressure = clamp(this.localPressure, -0.5, 0.5);
+
+                // Update visual representation
+                this.updateVisual();
+            }
+
+            applyRule(rule, nodes, deltaTime) {
+                const influenceStrength = rule.strength * deltaTime;
+                
+                for (const connectionId of this.connections) {
+                    const connectedNode = nodes.find(n => n.id === connectionId);
+                    if (!connectedNode) continue;
+
+                    // Check if rule applies to target
+                    if (rule.targetCategory && connectedNode.category?.name !== rule.targetCategory) {
+                        continue;
+                    }
+
+                    // Calculate influence based on rule type
+                    let influence = 0;
+                    switch (rule.type) {
+                        case 'attract':
+                            influence = (connectedNode.value - this.value) * influenceStrength;
+                            break;
+                        case 'repel':
+                            influence = -(connectedNode.value - this.value) * influenceStrength;
+                            break;
+                        case 'amplify':
+                            influence = connectedNode.value * influenceStrength * 0.1;
+                            break;
+                        case 'dampen':
+                            influence = -connectedNode.value * influenceStrength * 0.1;
+                            break;
+                        case 'synchronize':
+                            const avg = (this.value + connectedNode.value) / 2;
+                            influence = (avg - this.value) * influenceStrength;
+                            break;
+                    }
+
+                    this.targetValue += influence;
+                }
+            }
+
+            updateVisual() {
+                if (this.element && this.category) {
+                    this.element.style.background = valueToColor(this.value, this.category);
+                    // Update the displayed hex value
+                    this.element.textContent = valueToHex(this.value);
+                }
+            }
+
+            createElement() {
+                const element = document.createElement('div');
+                element.className = 'node';
+                element.style.left = `${this.x}px`;
+                element.style.top = `${this.y}px`;
+                element.style.width = `${this.size}px`;
+                element.style.height = `${this.size}px`;
+                element.textContent = valueToHex(this.value);
+                element.addEventListener('click', () => selectNode(this));
+                this.element = element;
+                return element;
+            }
+        }
+
+        // Category class
+        class Category {
+            constructor(name, fixedHue = null) {
+                this.name = name;
+                this.colorSeed = fixedHue !== null ? fixedHue / 360 : Math.random();
+            }
+        }
+
+        // Determine category based on node value
+        function getCategoryFromValue(value) {
+            if (value < 0.25) return categories.find(c => c.name === 'Cold');
+            if (value < 0.5) return categories.find(c => c.name === 'Stable');
+            if (value < 0.75) return categories.find(c => c.name === 'Default');
+            return categories.find(c => c.name === 'Hot');
+        }
+
+        // Convert node value to hex representation
+        function valueToHex(value) {
+            const hexValue = Math.round(clamp(value, 0, 1) * 255);
+            return hexValue.toString(16).toUpperCase().padStart(2, '0');
+        }
+
+        // Rule class
+        class Rule {
+            constructor(name, sourceCategory, targetCategory, type, strength) {
+                this.id = Date.now() + Math.random();
+                this.name = name;
+                this.sourceCategory = sourceCategory;
+                this.targetCategory = targetCategory;
+                this.type = type;
+                this.strength = strength;
+                this.enabled = true;
+            }
+        }
+
+        // Global state
+        let nodes = [];
+        let categories = [
+            new Category('Default', 270), // Purple
+            new Category('Hot', 0),       // Red
+            new Category('Cold', 240),    // Blue
+            new Category('Stable', null)  // Black/Gray (special case)
+        ];
+        let rules = [
+            new Rule('Heat Transfer', 'Hot', 'Cold', 'attract', 0.3),
+            new Rule('Cooling Effect', 'Cold', 'Hot', 'dampen', 0.2),
+            new Rule('Stability Spread', 'Stable', null, 'synchronize', 0.1)
+        ];
+
+        let isRunning = false;
+        let selectedNode = null;
+        let globalSettings = {
+            chaos: 0.5,
+            convergence: 0.3,
+            connectionDensity: 0.3,
+            nodeCount: 25
+        };
+
+        let showConnections = true;
+        let fps = 0;
+        let lastFrameTime = 0;
+        let frameCount = 0;
+
+        // DOM elements
+        const simulationArea = document.getElementById('simulationArea');
+        const nodesContainer = document.getElementById('nodesContainer');
+        const connectionsSvg = document.getElementById('connectionsSvg');
+
+        // Initialize simulation
+        function initializeNodes() {
+            // Clear existing nodes
+            nodesContainer.innerHTML = '';
+            nodes = [];
+
+            const nodeCount = globalSettings.nodeCount;
+            const simArea = simulationArea.getBoundingClientRect();
+            
+            for (let i = 0; i < nodeCount; i++) {
+                const node = new Node(
+                    i,
+                    random(50, simArea.width - 50),
+                    random(50, simArea.height - 50)
+                );
+                
+                // Assign initial category based on value
+                node.category = getCategoryFromValue(node.value);
+                
+                const element = node.createElement();
+                nodesContainer.appendChild(element);
+                node.updateVisual();
+                
+                nodes.push(node);
+            }
+
+            // Create random connections
+            const density = globalSettings.connectionDensity;
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    if (Math.random() < density) {
+                        nodes[i].addConnection(nodes[j].id);
+                        nodes[j].addConnection(nodes[i].id);
+                    }
+                }
+            }
+
+            updateConnections();
+            updateStats();
+            updateUI();
+        }
+
+        // Update connections visualization
+        function updateConnections() {
+            if (!showConnections) {
+                connectionsSvg.innerHTML = '';
+                return;
+            }
+
+            let svg = '';
+            const processedConnections = new Set();
+
+            for (const node of nodes) {
+                for (const connectionId of node.connections) {
+                    const connectionKey = `${Math.min(node.id, connectionId)}-${Math.max(node.id, connectionId)}`;
+                    if (processedConnections.has(connectionKey)) continue;
+                    processedConnections.add(connectionKey);
+
+                    const connectedNode = nodes.find(n => n.id === connectionId);
+                    if (!connectedNode) continue;
+
+                    const isActive = isRunning && rules.some(rule => 
+                        rule.enabled && (
+                            (rule.sourceCategory === node.category?.name && 
+                             (!rule.targetCategory || rule.targetCategory === connectedNode.category?.name)) ||
+                            (rule.sourceCategory === connectedNode.category?.name && 
+                             (!rule.targetCategory || rule.targetCategory === node.category?.name))
+                        )
+                    );
+
+                    svg += `<line x1="${node.x + node.size/2}" y1="${node.y + node.size/2}" 
+                                  x2="${connectedNode.x + connectedNode.size/2}" y2="${connectedNode.y + connectedNode.size/2}" 
+                                  class="connection-line ${isActive ? 'active' : ''}" />`;
+                }
+            }
+
+            connectionsSvg.innerHTML = svg;
+        }
+
+        // Animation loop
+        function animate(currentTime) {
+            if (currentTime - lastFrameTime >= 1000) {
+                fps = Math.round(frameCount * 1000 / (currentTime - lastFrameTime));
+                document.getElementById('fpsCounter').textContent = fps;
+                frameCount = 0;
+                lastFrameTime = currentTime;
+            }
+            frameCount++;
+
+            if (isRunning) {
+                for (const node of nodes) {
+                    node.update(nodes, rules, globalSettings);
+                }
+                updateConnections();
+                updateStats();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalConnections = nodes.reduce((sum, node) => sum + node.connections.size, 0) / 2;
+            const avgValue = nodes.reduce((sum, node) => sum + node.value, 0) / nodes.length;
+
+            document.getElementById('nodeCountStat').textContent = nodes.length;
+            document.getElementById('connectionsStat').textContent = totalConnections;
+            document.getElementById('avgValueStat').textContent = (avgValue || 0).toFixed(3);
+        }
+
+        // Update UI elements
+        function updateUI() {
+            updateCategoriesList();
+            updateLegend();
+            updateRulesList();
+            updateCategorySelects();
+        }
+
+        function updateCategoriesList() {
+            const container = document.getElementById('categoriesList');
+            container.innerHTML = '';
+
+            categories.forEach(category => {
+                const count = nodes.filter(node => node.category?.name === category.name).length;
+                const item = document.createElement('div');
+                item.className = 'category-item';
+                item.innerHTML = `
+                    <span class="category-badge">${category.name} (${count})</span>
+                    ${category.name !== 'Default' ? `<button onclick="removeCategory('${category.name}')" class="danger" style="padding: 2px 6px; font-size: 10px;">×</button>` : ''}
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function updateLegend() {
+            const container = document.getElementById('legendItems');
+            container.innerHTML = '';
+
+            categories.forEach(category => {
+                const item = document.createElement('div');
+                item.className = 'legend-item';
+                item.innerHTML = `
+                    <div class="legend-color" style="background: ${valueToColor(0.5, category)};"></div>
+                    <span>${category.name}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function updateRulesList() {
+            const container = document.getElementById('rulesList');
+            const noRulesMessage = document.getElementById('noRulesMessage');
+            
+            container.innerHTML = '';
+
+            if (rules.length === 0) {
+                noRulesMessage.classList.remove('hidden');
+            } else {
+                noRulesMessage.classList.add('hidden');
+                
+                rules.forEach(rule => {
+                    const card = document.createElement('div');
+                    card.className = 'rule-card';
+                    card.style.opacity = rule.enabled ? '1' : '0.5';
+                    card.innerHTML = `
+                        <div class="rule-header">
+                            <span class="rule-name">${rule.name}</span>
+                            <div>
+                                <button onclick="toggleRule('${rule.id}')" style="padding: 2px 6px; margin-right: 4px;">
+                                    ${rule.enabled ? '⏸️' : '▶️'}
+                                </button>
+                                <button onclick="removeRule('${rule.id}')" class="danger" style="padding: 2px 6px; font-size: 10px;">×</button>
+                            </div>
+                        </div>
+                        
+                        <div style="font-size: 11px; color: #b0b0b0; margin-bottom: 4px;">
+                            ${rule.sourceCategory} → ${rule.targetCategory || 'Any'} | ${rule.type} | ${rule.strength.toFixed(2)}
+                        </div>
+                        
+                        <div style="display: flex; gap: 4px;">
+                            <span class="category-badge">${rule.sourceCategory}</span>
+                            ${rule.targetCategory ? `<span class="category-badge">${rule.targetCategory}</span>` : ''}
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+        }
+
+        function updateCategorySelects() {
+            const sourceSelect = document.getElementById('sourceCategory');
+            const targetSelect = document.getElementById('targetCategory');
+            const nodeSelect = document.getElementById('nodeCategorySelect');
+
+            // Clear and repopulate
+            [sourceSelect, targetSelect, nodeSelect].forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '';
+                
+                if (select === sourceSelect) {
+                    select.innerHTML = '<option value="">Select source category</option>';
+                } else if (select === targetSelect) {
+                    select.innerHTML = '<option value="">Any target (optional)</option>';
+                }
+
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.name;
+                    option.textContent = cat.name;
+                    if (currentValue === cat.name) option.selected = true;
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        // Event handlers
+        function selectNode(node) {
+            // Deselect previous node
+            if (selectedNode) {
+                selectedNode.element.classList.remove('selected');
+            }
+
+            selectedNode = node;
+            node.element.classList.add('selected');
+
+            // Show selected node info
+            const info = document.getElementById('selectedNodeInfo');
+            const details = document.getElementById('selectedNodeDetails');
+            const select = document.getElementById('nodeCategorySelect');
+
+            info.classList.remove('hidden');
+            details.innerHTML = `
+                <strong>Node #${node.id}</strong><br>
+                Value: ${node.value.toFixed(3)}<br>
+                Connections: ${node.connections.size}<br>
+                Category: ${node.category?.name} (auto-assigned)
+            `;
+
+            // Show the category select but make it clear it's informational
+            select.value = node.category?.name || '';
+            select.disabled = true;
+        }
+
+        function toggleSimulation() {
+            isRunning = !isRunning;
+            const btn = document.getElementById('toggleBtn');
+            if (isRunning) {
+                btn.textContent = '⏸️ Pause';
+                btn.className = 'danger';
+                // Add pulsing animation to nodes
+                document.querySelectorAll('.node').forEach(node => {
+                    node.classList.add('pulsing');
+                });
+            } else {
+                btn.textContent = '▶️ Start';
+                btn.className = 'success';
+                // Remove pulsing animation
+                document.querySelectorAll('.node').forEach(node => {
+                    node.classList.remove('pulsing');
+                });
+            }
+        }
+
+        function resetSimulation() {
+            isRunning = false;
+            selectedNode = null;
+            document.getElementById('selectedNodeInfo').classList.add('hidden');
+            document.getElementById('toggleBtn').textContent = '▶️ Start';
+            document.getElementById('toggleBtn').className = 'success';
+            initializeNodes();
+        }
+
+        function addCategory() {
+            const input = document.getElementById('newCategoryInput');
+            const name = input.value.trim();
+            if (name && !categories.find(cat => cat.name === name)) {
+                categories.push(new Category(name));
+                input.value = '';
+                updateUI();
+            }
+        }
+
+        function removeCategory(categoryName) {
+            categories = categories.filter(cat => cat.name !== categoryName);
+            // Reassign nodes with removed category to Default
+            nodes.forEach(node => {
+                if (node.category?.name === categoryName) {
+                    node.category = categories.find(cat => cat.name === 'Default') || categories[0];
+                    node.updateVisual();
+                }
+            });
+            updateUI();
+        }
+
+        function addRule() {
+            const name = document.getElementById('ruleNameInput').value.trim();
+            const sourceCategory = document.getElementById('sourceCategory').value;
+            const targetCategory = document.getElementById('targetCategory').value;
+            const type = document.getElementById('ruleType').value;
+            const strength = parseFloat(document.getElementById('strengthSlider').value);
+
+            if (name && sourceCategory) {
+                rules.push(new Rule(name, sourceCategory, targetCategory || null, type, strength));
+                
+                // Clear form
+                document.getElementById('ruleNameInput').value = '';
+                document.getElementById('sourceCategory').value = '';
+                document.getElementById('targetCategory').value = '';
+                document.getElementById('ruleType').value = 'attract';
+                document.getElementById('strengthSlider').value = '0.2';
+                document.getElementById('strengthLabel').textContent = 'Strength: 0.20';
+                
+                updateRulesList();
+            }
+        }
+
+        function removeRule(ruleId) {
+            rules = rules.filter(rule => rule.id != ruleId);
+            updateRulesList();
+        }
+
+        function toggleRule(ruleId) {
+            const rule = rules.find(r => r.id == ruleId);
+            if (rule) {
+                rule.enabled = !rule.enabled;
+                updateRulesList();
+            }
+        }
+
+        function changeNodeCategory() {
+            // Categories are now auto-assigned based on value, so this function is disabled
+            // but we keep it for potential future manual override functionality
+        }
+
+        // Template functions
+        function addTemperatureTemplate() {
+            rules.push(
+                new Rule('Thermal Equilibrium', 'Hot', 'Cold', 'attract', 0.4),
+                new Rule('Heat Dissipation', 'Hot', null, 'dampen', 0.1),
+                new Rule('Cold Spreading', 'Cold', null, 'synchronize', 0.2)
+            );
+            updateRulesList();
+        }
+
+        function addStabilityTemplate() {
+            rules.push(
+                new Rule('Stabilizer Effect', 'Stable', null, 'synchronize', 0.3),
+                new Rule('Chaos Amplification', 'Default', 'Default', 'repel', 0.2)
+            );
+            updateRulesList();
+        }
+
+        function addWaveTemplate() {
+            rules.push(
+                new Rule('Resonance', 'Default', 'Default', 'synchronize', 0.5),
+                new Rule('Interference', 'Hot', 'Cold', 'repel', 0.3)
+            );
+            updateRulesList();
+        }
+
+        // Event listeners
+        document.getElementById('toggleBtn').addEventListener('click', toggleSimulation);
+        document.getElementById('resetBtn').addEventListener('click', resetSimulation);
+        document.getElementById('randomizeBtn').addEventListener('click', initializeNodes);
+
+        // Sliders
+        document.getElementById('chaosSlider').addEventListener('input', (e) => {
+            globalSettings.chaos = parseFloat(e.target.value);
+            document.getElementById('chaosLabel').textContent = `Chaos Level: ${globalSettings.chaos.toFixed(2)}`;
+        });
+
+        document.getElementById('convergenceSlider').addEventListener('input', (e) => {
+            globalSettings.convergence = parseFloat(e.target.value);
+            document.getElementById('convergenceLabel').textContent = `Convergence: ${globalSettings.convergence.toFixed(2)}`;
+        });
+
+        document.getElementById('densitySlider').addEventListener('input', (e) => {
+            globalSettings.connectionDensity = parseFloat(e.target.value);
+            document.getElementById('densityLabel').textContent = `Connection Density: ${globalSettings.connectionDensity.toFixed(2)}`;
+        });
+
+        document.getElementById('nodeCountSlider').addEventListener('input', (e) => {
+            globalSettings.nodeCount = parseInt(e.target.value);
+            document.getElementById('nodeCountLabel').textContent = `Node Count: ${globalSettings.nodeCount}`;
+        });
+
+        document.getElementById('strengthSlider').addEventListener('input', (e) => {
+            const value = parseFloat(e.target.value);
+            document.getElementById('strengthLabel').textContent = `Strength: ${value.toFixed(2)}`;
+        });
+
+        document.getElementById('showConnectionsCheck').addEventListener('change', (e) => {
+            showConnections = e.target.checked;
+            updateConnections();
+        });
+
+        // Category and rule management
+        document.getElementById('addCategoryBtn').addEventListener('click', addCategory);
+        document.getElementById('newCategoryInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addCategory();
+        });
+
+        document.getElementById('addRuleBtn').addEventListener('click', addRule);
+        document.getElementById('nodeCategorySelect').addEventListener('change', changeNodeCategory);
+
+        // Template buttons
+        document.getElementById('temperatureTemplate').addEventListener('click', addTemperatureTemplate);
+        document.getElementById('stabilityTemplate').addEventListener('click', addStabilityTemplate);
+        document.getElementById('waveTemplate').addEventListener('click', addWaveTemplate);
+
+        // Initialize the simulation
+        function init() {
+            initializeNodes();
+            requestAnimationFrame(animate);
+        }
+
+        // Start the app when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
